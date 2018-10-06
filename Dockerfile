@@ -6,6 +6,7 @@ WORKDIR /go/src/docker-image-updater
 COPY . .
 
 RUN dep ensure
+RUN go build ./...
 RUN go install -v ./...
 
 ENTRYPOINT ["/go/bin/docker-image-updater"]

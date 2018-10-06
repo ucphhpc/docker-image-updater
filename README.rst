@@ -20,6 +20,8 @@ Through go setup check the debian image for updates every 10 minutes (the defaul
 Build as a docker image (defaults to use the :edge tag)::
 
     make build
+    # customize build tag, e.g
+    make build TAG=latest
 
 Which produces an image called rasmunk/docker-image-updater:edge, override the TAG variable in the makefile to change this.
 To run an updater container that continuously checks for updates against the debian image every 10 minutes ::
