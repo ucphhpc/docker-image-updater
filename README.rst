@@ -14,7 +14,7 @@ Getting Started
 Either use docker to build an image, or build the binary and run on the host.
 Through go setup check the debian image for updates every 10 minutes (the default if left out) ::
 
-    go build
+    go build ./...
     ./docker-image-updater -image debian -update-interval 10
 
 Build as a docker image (defaults to use the :edge tag)::
