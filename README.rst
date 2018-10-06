@@ -1,13 +1,17 @@
-
 ====================
 docker-image-updater
 ====================
+
+Docker image updater that continuously checks for updates for a given docker image, has to options for execution:
+
+- build and execute the binary native on the host itself.
+- run as a container with the hosts docker socket mounted inside the container.
 
 ---------------
 Getting Started
 ---------------
 
-Either use docker to build an image, or install go and run the updater.
+Either use docker to build an image, or build the binary and run on the host.
 Through go setup check the debian image for updates every 10 minutes (the default if left out) ::
 
     go build
