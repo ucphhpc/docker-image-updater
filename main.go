@@ -2,16 +2,62 @@ package main
 
 
 import (
-	"context"
-	client2 "github.com/docker/docker/client"
-	"github.com/docker/docker-ce/components/engine/client"
+	"github.com/docker/docker/client"
+	"golang.org/x/net/context"
+	"time"
+	"fmt"
+	"github.com/docker/docker/api/types"
+	"flag"
+	"os"
+	"bytes"
 )
 
 
+func updateImage(ctx context.Context, client *client.Client, image string) (error) {
+	readio, err := client.ImagePull(ctx, image, types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+
+	if readio != nil {
+		// Get output
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(readio)
+		fmt.Printf("%s update response: %s", image, buf.String())
+	}
+
+	return nil
+}
+
 func main() {
+	var imageFlags arrayFlags
+	var updateInterval int
+
+	flag.Var(&imageFlags, "image", "A list of images that should be monitored for update pulls")
+	flag.IntVar(&updateInterval, "update-interval", 10, "How often should the service check for image updates in minutes")
+	flag.Parse()
+
+	if imageFlags.String() == "[]" {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
 	ctx := context.Background()
-	client := client.NewClientWithOpts()
+	cli, err := client.NewClientWithOpts()
+	if err != nil {
+		panic(err)
+	}
 
-	client.ImagePull()
+	for {
+		fmt.Println("Checking for new images",
+			time.Now().Format(time.RFC3339))
+		for _, i := range imageFlags {
+			fmt.Printf("Checking %s for a new version \n", i)
+			if err := updateImage(ctx, cli, i); err != nil {
+				fmt.Printf("Failed to check %s for updates, (err): %s \n", i, err)
+			}
+		}
 
+		time.Sleep(time.Duration(updateInterval) * time.Minute)
+	}
 }
