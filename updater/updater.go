@@ -1,17 +1,15 @@
 package main
 
-
 import (
-	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
-	"time"
+	"bytes"
+	"flag"
 	"fmt"
 	"github.com/docker/docker/api/types"
-	"flag"
+	"github.com/docker/docker/client"
+	"golang.org/x/net/context"
 	"os"
-	"bytes"
+	"time"
 )
-
 
 func updateImage(ctx context.Context, client *client.Client, image string) (error) {
 	readio, err := client.ImagePull(ctx, image, types.ImagePullOptions{})
@@ -29,7 +27,7 @@ func updateImage(ctx context.Context, client *client.Client, image string) (erro
 	return nil
 }
 
-func main() {
+func run() {
 	var imageFlags arrayFlags
 	var updateInterval int
 
@@ -43,7 +41,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := client.NewEnvClient()
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +55,6 @@ func main() {
 				fmt.Printf("Failed to check %s for updates, (err): %s \n", i, err)
 			}
 		}
-
 		time.Sleep(time.Duration(updateInterval) * time.Minute)
 	}
 }
