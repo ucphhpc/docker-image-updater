@@ -31,8 +31,10 @@ func run() {
 	var imageFlags arrayFlags
 	var updateInterval int
 
-	flag.Var(&imageFlags, "image", "A list of images that should be monitored for update pulls")
-	flag.IntVar(&updateInterval, "update-interval", 10, "How often should the service check for image updates in minutes")
+	flag.Var(&imageFlags, "update", "A list of images that should be monitored for update pulls")
+	flag.IntVar(&updateInterval, "interval", 10, "How often should the service check for image updates in minutes")
+	flag.Bool("prune", false, "Whether non listed image should be pruned/removed from the host")
+	flag.Bool("keep_untagged", true, "A flag on whether untagged/nontagged images should be kept on the host")
 	flag.Parse()
 
 	if imageFlags.String() == "[]" {
