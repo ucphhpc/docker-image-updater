@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/context"
 	"os"
 	"time"
+	"strings"
 )
 
 func updateImage(ctx context.Context, client *client.Client, image string) (error) {
@@ -33,7 +34,7 @@ func removeImage(ctx context.Context, client *client.Client, image types.ImageSu
 		return err
 	}
 	for _, d := range delResp {
-		fmt.Printf("Delete response %s untagged response %s", d.Deleted, d.Untagged)
+		fmt.Printf("Delete response %s untagged response %s \n", d.Deleted, d.Untagged)
 	}
 	return nil
 }
@@ -52,18 +53,20 @@ func run() {
 	var updateImages arrayFlags
 	var interval int
 	var prune bool
-	var keepUntagged bool
+	var pruneUntagged bool
 
-	flag.Var(&updateImages, "update", "A list of images that should be monitored for update pulls")
+	flag.Var(&updateImages, "update",
+		"A list of images that should be monitored for update pulls")
 	flag.IntVar(&interval, "interval", 10,
 		"How often should the service check for image updates in minutes")
 	flag.BoolVar(&prune, "prune", false,
-		"Whether non listed images should be pruned/removed from the host")
-	flag.BoolVar(&keepUntagged,"keep_untagged", true,
-		"A flag on whether untagged/nontagged images should be kept on the host")
+		"Whether non update images should be pruned/removed from the host")
+	flag.BoolVar(&pruneUntagged,"prune-untagged", false,
+		"Requires prune, Whether untagged/nontagged images should be kept on the host")
 	flag.Parse()
 
-	if updateImages.String() == "[]" {
+	fmt.Printf(updateImages.String())
+	if updateImages.String() == "" {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -73,10 +76,13 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("Monitoring images %v for updates %v \n",
+		updateImages, time.Now().Format(time.RFC3339))
+	fmt.Printf("Prune nonlisted images %v \n", prune)
 	for {
 		fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
-		fmt.Printf("Prune nonlisted images %v \n", prune)
 
+		// Prune non-monitored images
 		if prune {
 			images, err := hostImages(ctx, cli)
 			if err != nil {
@@ -84,24 +90,47 @@ func run() {
 			}
 
 			for _, i := range images {
+				for _, tag := range i.RepoTags {
+					beingUpdated := false
+					if _, ok := updateImages[tag]; ok {
+						beingUpdated = true
+						// Check weather it matches without image sha
+					} else if _, ok := updateImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+						beingUpdated = true
+					}
 
-
-
-				if err := removeImage(ctx, cli, i); err != nil {
-					fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
+					if !beingUpdated {
+						fmt.Printf("Pruning %v \n", i.ID)
+						if err := removeImage(ctx, cli, i); err != nil {
+							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
+						}
+					}
+				}
+				// Remove untagged
+				if pruneUntagged {
+					if len(i.RepoTags) == 0 {
+						if err := removeImage(ctx, cli, i); err != nil {
+							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
+						}
+					}
 				}
 			}
+
+
+
+
 		}
 
 		fmt.Println("Checking for new images", time.Now().Format(time.RFC3339))
-		for _, i := range updateImages {
-			fmt.Printf("Checking %v for a new version \n", i)
-			if err := updateImage(ctx, cli, i); err != nil {
-				fmt.Printf("Failed to check %v for updates, (err): %v \n", i, err)
+		for k := range updateImages {
+			fmt.Printf("Checking %v for a new version \n", k)
+			if err := updateImage(ctx, cli, k); err != nil {
+				fmt.Printf("Failed to check %v for updates, (err): %v \n", k, err)
 			}
 		}
 
 		fmt.Println("Monitor stage finished ", time.Now().Format(time.RFC3339))
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
+	fmt.Println("Finished Monitoring ", time.Now().Format(time.RFC3339))
 }

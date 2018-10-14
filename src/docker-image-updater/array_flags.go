@@ -1,15 +1,21 @@
 package main
 
-import "fmt"
+import "strings"
 
 type arrayFlags map[string]struct{}
 
 func (i *arrayFlags) String() string {
-	return fmt.Sprintf("%v", *i)
+	arr := make([]string, 0)
+	for k := range *i {
+		arr = append(arr, k)
+	}
+	return strings.Join(arr, ",")
 }
 
 func (i *arrayFlags) Set(Value string) error {
-
-	*i["sdfdsf"]struct {}{}
+	if *i == nil {
+		*i = make(arrayFlags)
+	}
+	(*i)[Value] = struct{}{}
 	return nil
 }
