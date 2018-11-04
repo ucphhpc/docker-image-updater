@@ -16,14 +16,17 @@ Through go setup check the debian image for updates every 10 minutes (the defaul
 
     go build ./...
     ./docker-image-updater -image debian -update-interval 10
+    
     # If only updated images should be kept
     ./docker-image-updater -image debian -prune
+    
     # If updated untagged images should be pruned aswell
     ./docker-image-updater -image debian -prune -prune-untagged
 
 Build as a docker image (defaults to use the :edge tag)::
 
     make build
+    
     # override the build tag, e.g
     make build TAG=latest
 
