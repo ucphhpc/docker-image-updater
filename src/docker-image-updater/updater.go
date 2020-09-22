@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"golang.org/x/net/context"
-	"os"
-	"time"
-	"strings"
 )
 
-func updateImage(ctx context.Context, client *client.Client, image string) (error) {
+func updateImage(ctx context.Context, client *client.Client, image string) error {
 	readIo, err := client.ImagePull(ctx, image, types.ImagePullOptions{})
 	if err != nil {
 		return err
@@ -28,8 +29,8 @@ func updateImage(ctx context.Context, client *client.Client, image string) (erro
 	return nil
 }
 
-func removeImage(ctx context.Context, client *client.Client, image types.ImageSummary) (error) {
-	delResp, err := client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force:true, PruneChildren:true})
+func removeImage(ctx context.Context, client *client.Client, image types.ImageSummary) error {
+	delResp, err := client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true, PruneChildren: true})
 	if err != nil {
 		return err
 	}
@@ -39,8 +40,7 @@ func removeImage(ctx context.Context, client *client.Client, image types.ImageSu
 	return nil
 }
 
-
-func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error ){
+func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error) {
 	images, err := client.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
 		return nil, err
@@ -48,21 +48,24 @@ func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummar
 	return images, nil
 }
 
-
 func run() {
 	var updateImages arrayFlags
+	var protectImages arrayFlags
 	var interval int
 	var prune bool
 	var pruneUntagged bool
 
 	flag.Var(&updateImages, "update",
 		"A list of images that should be monitored for update pulls")
+	flag.Var(&protectImages, "protect",
+		"A list of images that should not be pruned on the hosts")
 	flag.IntVar(&interval, "interval", 10,
 		"How often should the service check for image updates in minutes")
 	flag.BoolVar(&prune, "prune", false,
 		"Whether non update images should be pruned/removed from the host")
-	flag.BoolVar(&pruneUntagged,"prune-untagged", false,
+	flag.BoolVar(&pruneUntagged, "prune-untagged", false,
 		"Requires prune, Whether untagged/nontagged images should be kept on the host")
+
 	flag.Parse()
 
 	fmt.Printf(updateImages.String())
@@ -76,12 +79,10 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Monitoring images %v for updates %v \n",
-		updateImages, time.Now().Format(time.RFC3339))
-	fmt.Printf("Prune nonlisted images %v \n", prune)
+	fmt.Printf("Checking update for: %v\n", updateImages)
+	fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
 	for {
 		fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
-
 		// Prune non-monitored images
 		if prune {
 			images, err := hostImages(ctx, cli)
@@ -92,6 +93,7 @@ func run() {
 			for _, i := range images {
 				for _, tag := range i.RepoTags {
 					beingUpdated := false
+					protected := false
 					if _, ok := updateImages[tag]; ok {
 						beingUpdated = true
 						// Check weather it matches without image sha
@@ -99,7 +101,14 @@ func run() {
 						beingUpdated = true
 					}
 
-					if !beingUpdated {
+					if _, ok := protectImages[tag]; ok {
+						protected = true
+						// Check weather it matches without image sha
+					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+						protected = true
+					}
+
+					if !beingUpdated && !protected {
 						fmt.Printf("Pruning %v \n", i.ID)
 						if err := removeImage(ctx, cli, i); err != nil {
 							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
@@ -115,10 +124,6 @@ func run() {
 					}
 				}
 			}
-
-
-
-
 		}
 
 		fmt.Println("Checking for new images", time.Now().Format(time.RFC3339))
@@ -132,5 +137,4 @@ func run() {
 		fmt.Println("Monitor stage finished ", time.Now().Format(time.RFC3339))
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
-	fmt.Println("Finished Monitoring ", time.Now().Format(time.RFC3339))
 }
