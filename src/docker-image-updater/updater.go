@@ -107,6 +107,9 @@ func run() {
 					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
 						protected = true
 					}
+					if protected {
+						fmt.Printf("%v wont be pruned since it is protected \n", tag)
+					}
 
 					if !beingUpdated && !protected {
 						fmt.Printf("Pruning %v \n", i.ID)
