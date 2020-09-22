@@ -23,6 +23,9 @@ Through go setup check the debian image for updates every 10 minutes (the defaul
     
     # If updated untagged images should be pruned aswell
     ./docker-image-updater -update debian -prune -prune-untagged
+    
+    # If in addition to images being updated other images should just be kept without being updated
+    ./docker-image-updater -update debian -protect ubuntu -prune
 
 Build as a docker image (defaults to use the :edge tag)::
 
@@ -36,4 +39,5 @@ override the TAG variable in the makefile to change this. To run an updater cont
 that continuously checks for updates against the debian image every 10 minutes::
 
     docker run --mount type=bind,src=/var/run/docker.sock,target=/var/run/docker.sock rasmunk/docker-image-updater:edge -update debian
+
 
