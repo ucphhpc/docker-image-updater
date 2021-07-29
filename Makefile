@@ -1,6 +1,6 @@
 .PHONY: help
 
-OWNER:=rasmunk
+OWNER:=ucphhpc
 TAG:=edge
 IMAGE:=docker-image-updater
 
