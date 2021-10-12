@@ -63,7 +63,7 @@ func usedImage(ctx context.Context, client *client.Client, image types.ImageSumm
 
 
 func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error) {
-	images, err := client.ImageList(ctx, types.ImageListOptions{})
+	images, err := client.ImageList(ctx, types.ImageListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
