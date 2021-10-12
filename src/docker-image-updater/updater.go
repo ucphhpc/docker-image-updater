@@ -104,7 +104,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Running update check")
+	fmt.Println("Running update check", time.Now().Format(time.RFC3339))
 	if debug {
 		fmt.Printf("Checking update for: %v\n", updateImages)
 		fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
