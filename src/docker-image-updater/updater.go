@@ -104,7 +104,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Running update check")
+	fmt.Println("Running update check")
 	if debug {
 		fmt.Printf("Checking update for: %v\n", updateImages)
 		fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
