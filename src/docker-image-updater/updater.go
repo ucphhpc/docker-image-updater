@@ -104,8 +104,11 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Checking update for: %v\n", updateImages)
-	fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
+	fmt.Printf("Running update check")
+	if debug {
+		fmt.Printf("Checking update for: %v\n", updateImages)
+		fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
+	}
 	for {
 		if debug {
 			fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
