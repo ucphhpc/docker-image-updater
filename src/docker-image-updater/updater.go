@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func updateImage(ctx context.Context, client *client.Client, image string) error {
+func updateImage(ctx context.Context, client *client.Client, image string, debug bool) error {
 	readIo, err := client.ImagePull(ctx, image, types.ImagePullOptions{})
 	if err != nil {
 		return err
@@ -23,22 +23,44 @@ func updateImage(ctx context.Context, client *client.Client, image string) error
 		// Get output
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(readIo)
-		fmt.Printf("%s update response: %s", image, buf.String())
+		if debug {
+			fmt.Printf("%s update response: %s \n", image, buf.String())
+		}
 	}
 
 	return nil
 }
 
-func removeImage(ctx context.Context, client *client.Client, image types.ImageSummary) error {
+func removeImage(ctx context.Context, client *client.Client, image types.ImageSummary, debug bool) error {
 	delResp, err := client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true, PruneChildren: true})
 	if err != nil {
 		return err
 	}
 	for _, d := range delResp {
-		fmt.Printf("Delete response %s untagged response %s \n", d.Deleted, d.Untagged)
+		if debug {
+			fmt.Printf("Delete response %s untagged response %s \n", d.Deleted, d.Untagged)
+		}
 	}
 	return nil
 }
+
+func usedImage(ctx context.Context, client *client.Client, image types.ImageSummary, debug bool) (bool, error) {
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true});
+	if err != nil {
+		return false, err
+	}
+
+	for _, container := range containers {
+		if container.ImageID == image.ID {
+			if debug {
+				fmt.Printf("Image: %v is being used by container: %v \n", image.ID, container.ID)
+			}
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 
 func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error) {
 	images, err := client.ImageList(ctx, types.ImageListOptions{})
@@ -54,6 +76,8 @@ func run() {
 	var interval int
 	var prune bool
 	var pruneUntagged bool
+	// debug defines whether the 
+	var debug bool
 
 	flag.Var(&updateImages, "update",
 		"A list of images that should be monitored for update pulls")
@@ -65,6 +89,8 @@ func run() {
 		"Whether non update images should be pruned/removed from the host")
 	flag.BoolVar(&pruneUntagged, "prune-untagged", false,
 		"Requires prune, Whether untagged/nontagged images should be kept on the host")
+	flag.BoolVar(&debug, "debug", false,
+		"Set the debug flag to run the updater in debug mode")
 
 	flag.Parse()
 
@@ -82,7 +108,9 @@ func run() {
 	fmt.Printf("Checking update for: %v\n", updateImages)
 	fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
 	for {
-		fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
+		if debug {
+			fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
+		}
 		// Prune non-monitored images
 		if prune {
 			images, err := hostImages(ctx, cli)
@@ -94,6 +122,7 @@ func run() {
 				for _, tag := range i.RepoTags {
 					beingUpdated := false
 					protected := false
+					beingUsed := false
 					if _, ok := updateImages[tag]; ok {
 						beingUpdated = true
 						// Check weather it matches without image sha
@@ -107,13 +136,22 @@ func run() {
 					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
 						protected = true
 					}
-					if protected {
+					
+					if used, err := usedImage(ctx, cli, i, debug); err != nil {
+						fmt.Printf("%v failed to check if an image is used, (err): %v \n", i.ID, err)
+					} else {
+						beingUsed = used
+					}
+
+					if protected && debug {
 						fmt.Printf("%v wont be pruned since it is protected \n", tag)
 					}
 
-					if !beingUpdated && !protected {
-						fmt.Printf("Pruning %v \n", i.ID)
-						if err := removeImage(ctx, cli, i); err != nil {
+					if !beingUpdated && !protected && !beingUsed {
+						if debug {
+							fmt.Printf("Pruning %v \n", i.ID)
+						}
+						if err := removeImage(ctx, cli, i, debug); err != nil {
 							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
 						}
 					}
@@ -121,23 +159,25 @@ func run() {
 				// Remove untagged
 				if pruneUntagged {
 					if len(i.RepoTags) == 0 {
-						if err := removeImage(ctx, cli, i); err != nil {
+						if err := removeImage(ctx, cli, i, debug); err != nil {
 							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
 						}
 					}
 				}
 			}
 		}
-
+		
 		fmt.Println("Checking for new images", time.Now().Format(time.RFC3339))
 		for k := range updateImages {
-			fmt.Printf("Checking %v for a new version \n", k)
-			if err := updateImage(ctx, cli, k); err != nil {
+			if debug {
+				fmt.Printf("Checking %v for a new version \n", k)
+			}
+			if err := updateImage(ctx, cli, k, debug); err != nil {
 				fmt.Printf("Failed to check %v for updates, (err): %v \n", k, err)
 			}
 		}
 
-		fmt.Println("Monitor stage finished ", time.Now().Format(time.RFC3339))
+		fmt.Println("Update stage finished ", time.Now().Format(time.RFC3339))
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 }
