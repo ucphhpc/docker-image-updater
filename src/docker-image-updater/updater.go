@@ -94,7 +94,6 @@ func run() {
 
 	flag.Parse()
 
-	fmt.Printf(updateImages.String())
 	if updateImages.String() == "" {
 		flag.PrintDefaults()
 		os.Exit(1)
