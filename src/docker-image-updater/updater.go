@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -24,7 +24,7 @@ func updateImage(ctx context.Context, client *client.Client, image string, debug
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(readIo)
 		if debug {
-			fmt.Printf("%s update response: %s \n", image, buf.String())
+			log.Debugf("%s - Update image response, (err): %s", currentTime(), buf.String())
 		}
 	}
 
@@ -38,7 +38,7 @@ func removeImage(ctx context.Context, client *client.Client, image types.ImageSu
 	}
 	for _, d := range delResp {
 		if debug {
-			fmt.Printf("Delete response %s untagged response %s \n", d.Deleted, d.Untagged)
+			log.Debugf("%s - Delete response: %s, untagged response: %s", currentTime(), d.Deleted, d.Untagged)
 		}
 	}
 	return nil
@@ -53,7 +53,7 @@ func usedImage(ctx context.Context, client *client.Client, image types.ImageSumm
 	for _, container := range containers {
 		if container.ImageID == image.ID {
 			if debug {
-				fmt.Printf("Image: %v is being used by container: %v \n", image.ID, container.ID)
+				log.Debugf("%s - Image: %s is being used by container: %s", currentTime(), image.ID, container.ID)
 			}
 			return true, nil
 		}
@@ -70,13 +70,16 @@ func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummar
 	return images, nil
 }
 
+func currentTime() string {
+	return time.Now().Format(time.RFC3339)
+}
+
 func run() {
 	var updateImages arrayFlags
 	var protectImages arrayFlags
 	var interval int
 	var prune bool
 	var pruneUntagged bool
-	// debug defines whether the 
 	var debug bool
 
 	flag.Var(&updateImages, "update",
@@ -104,20 +107,21 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Running update check", time.Now().Format(time.RFC3339))
+
+	log.Infof("%s - Running update check", currentTime())
 	if debug {
-		fmt.Printf("Checking update for: %v\n", updateImages)
-		fmt.Printf("Pruning images not in: %v or %s \n", updateImages, protectImages)
+		log.Debugf("%s - Checking update for: %v", currentTime(), updateImages)
+		log.Debugf("%s - Pruning images not in: %v or %s", currentTime(), updateImages, protectImages)
 	}
 	for {
 		if debug {
-			fmt.Println("Monitor stage start ", time.Now().Format(time.RFC3339))
+			log.Debugf("%s - Monitor stage start", currentTime())
 		}
 		// Prune non-monitored images
 		if prune {
 			images, err := hostImages(ctx, cli)
 			if err != nil {
-				fmt.Printf("Failed to retrieve host images, (err): %v \n", err)
+				log.Errorf("%s - Failed to retrieve host images, (err): %s", currentTime(), err)
 			}
 
 			for _, i := range images {
@@ -140,21 +144,21 @@ func run() {
 					}
 					
 					if used, err := usedImage(ctx, cli, i, debug); err != nil {
-						fmt.Printf("%v failed to check if an image is used, (err): %v \n", i.ID, err)
+						log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
 					} else {
 						beingUsed = used
 					}
 
 					if protected && debug {
-						fmt.Printf("%v wont be pruned since it is protected \n", tag)
+						log.Debugf("%s - Volume tag %s wont be pruned since it is protected", currentTime(), tag)
 					}
 
 					if !beingUpdated && !protected && !beingUsed {
 						if debug {
-							fmt.Printf("Pruning %v \n", i.ID)
+							log.Debugf("%s - Prunning %v", currentTime(), i.ID)
 						}
 						if err := removeImage(ctx, cli, i, debug); err != nil {
-							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
+							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
 						}
 					}
 				}
@@ -162,24 +166,24 @@ func run() {
 				if pruneUntagged {
 					if len(i.RepoTags) == 0 {
 						if err := removeImage(ctx, cli, i, debug); err != nil {
-							fmt.Printf("Failed to remove %v, (err): %v \n", i.ID, err)
+							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
 						}
 					}
 				}
 			}
 		}
 		
-		fmt.Println("Checking for new images", time.Now().Format(time.RFC3339))
+		log.Infof("%s - Checking for image updates", currentTime())
 		for k := range updateImages {
 			if debug {
-				fmt.Printf("Checking %v for a new version \n", k)
+				log.Debugf("%s - Checking image: %s for a new version", currentTime(), k)
 			}
 			if err := updateImage(ctx, cli, k, debug); err != nil {
-				fmt.Printf("Failed to check %v for updates, (err): %v \n", k, err)
+				log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
 			}
 		}
 
-		fmt.Println("Update stage finished ", time.Now().Format(time.RFC3339))
+		log.Infof("%s - Update state finished", currentTime())
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 }
