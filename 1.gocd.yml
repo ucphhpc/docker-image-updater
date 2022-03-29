@@ -26,7 +26,7 @@ pipelines:
     parameters:
       IMAGE: docker-image-updater
       ARGS: ''
-      COMMIT_TAG: GO_REVISION_DOCKER_JUPYTERHUB_GIT
+      COMMIT_TAG: GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
       DEFAULT_TAG: latest
       SRC_DIRECTORY: docker-image-updater
       TEST_DIRECTORY: docker-image-updater
