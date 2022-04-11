@@ -45,7 +45,7 @@ func removeImage(ctx context.Context, client *client.Client, image types.ImageSu
 }
 
 func usedImage(ctx context.Context, client *client.Client, image types.ImageSummary, debug bool) (bool, error) {
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true});
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		return false, err
 	}
@@ -60,7 +60,6 @@ func usedImage(ctx context.Context, client *client.Client, image types.ImageSumm
 	}
 	return false, nil
 }
-
 
 func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error) {
 	images, err := client.ImageList(ctx, types.ImageListOptions{All: true})
@@ -142,7 +141,7 @@ func run() {
 					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
 						protected = true
 					}
-					
+
 					if used, err := usedImage(ctx, cli, i, debug); err != nil {
 						log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
 					} else {
@@ -172,7 +171,7 @@ func run() {
 				}
 			}
 		}
-		
+
 		log.Infof("%s - Checking for image updates", currentTime())
 		for k := range updateImages {
 			if debug {
