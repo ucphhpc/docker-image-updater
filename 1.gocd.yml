@@ -1,12 +1,12 @@
 environments:
-  gocd_images:
+  docker_image:
     environments:
       GIT_USER: "{{SECRET:[github][username]}}"
     pipelines:
       - docker-image-updater
 pipelines:
   docker-image-updater:
-    group: gocd_images
+    group: docker_image
     locking: off
     materials:
       docker-image-updater_git:  # this is the name of material
