@@ -1,6 +1,6 @@
 version: '3.7'
 services:
-  docker-image-update_jupyterhub:
+  updater:
     build:
         context: ./
         dockerfile: Dockerfile
@@ -11,9 +11,6 @@ services:
     image: ucphhpc/docker-image-updater
     deploy:
       mode: global
-      placement:
-          constraints:
-              - "node.role==manager"
     environment:
       TZ: ${TZ}
     volumes:
