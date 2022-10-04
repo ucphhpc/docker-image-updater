@@ -1,6 +1,8 @@
+SHELL:=/bin/bash
 PACKAGE_NAME=docker-image-updater
 PACKAGE_NAME_FORMATTED=$(subst -,_,$(PACKAGE_NAME))
 OWNER=ucphhpc
+SERVICE_NAME=docker-image-updater
 IMAGE=$(PACKAGE_NAME)
 # Enable that the builder should use buildkit
 # https://docs.docker.com/develop/develop-images/build_enhancements/
@@ -8,7 +10,7 @@ DOCKER_BUILDKIT=1
 TAG=edge
 ARGS=
 
-.PHONY: all init dockerbuild dockerclean dockerpush clean dist distclean maintainer-clean
+.PHONY: all init dockerbuild dockerclean dockerpush daemon down clean dist distclean maintainer-clean
 .PHONY: install uninstall installcheck check
 
 all: init dockerbuild
@@ -21,13 +23,18 @@ endif
 endif
 
 dockerbuild:
-	docker build -t $(OWNER)/$(IMAGE):$(TAG) $(ARGS) .
+	docker-compose build ${ARGS}
 
 dockerclean:
 	docker rmi -f $(OWNER)/$(IMAGE):$(TAG)
 
 dockerpush:
 	docker push $(OWNER)/$(IMAGE):$(TAG)
+daemon:
+	docker stack deploy -c <(docker-compose config) $(SERVICE_NAME) $(ARGS)
+
+down:
+	docker stack rm $(SERVICE_NAME) $(ARGS)
 
 clean:
 	$(MAKE) dockerclean
