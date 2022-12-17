@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"os"
 	"strings"
 	"time"
 
@@ -95,11 +94,6 @@ func run() {
 		"Set the debug flag to run the updater in debug mode")
 
 	flag.Parse()
-
-	if updateImages.String() == "" {
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
 
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()
