@@ -1,11 +1,12 @@
-FROM golang:1.17.1-alpine
+FROM golang:1.20.3-alpine
 
-RUN apk add tzdata git dep
+RUN apk add tzdata git
 
 WORKDIR /go/src/docker-image-updater
 COPY . .
 
-RUN dep ensure
+RUN go mod tidy
+RUN go mod vendor
 RUN go build ./...
 RUN go install -v ./...
 

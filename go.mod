@@ -1,6 +1,6 @@
 module github.com/rasmunk/docker-image-updater
 
-go 1.12
+go 1.20
 
 require (
 	github.com/Microsoft/go-winio v0.4.11 // indirect
