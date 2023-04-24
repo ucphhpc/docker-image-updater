@@ -5,7 +5,6 @@ RUN apk add tzdata git
 WORKDIR /go/src/docker-image-updater
 COPY . .
 
-RUN go mod tidy
 RUN go mod vendor
 RUN go build ./...
 RUN go install -v ./...
