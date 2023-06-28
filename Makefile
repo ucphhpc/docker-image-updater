@@ -4,6 +4,7 @@ PACKAGE_NAME_FORMATTED=$(subst -,_,$(PACKAGE_NAME))
 OWNER=ucphhpc
 SERVICE_NAME=docker-image-updater
 IMAGE=$(PACKAGE_NAME)
+DOCKER_COMPOSE=$(shell which docker-compose || echo 'docker compose')
 # Enable that the builder should use buildkit
 # https://docs.docker.com/develop/develop-images/build_enhancements/
 DOCKER_BUILDKIT=1
@@ -23,15 +24,16 @@ endif
 endif
 
 dockerbuild:
-	docker-compose build ${ARGS}
+	${DOCKER_COMPOSE} build ${ARGS}
 
 dockerclean:
 	docker rmi -f $(OWNER)/$(IMAGE):$(TAG)
 
 dockerpush:
 	docker push $(OWNER)/$(IMAGE):$(TAG)
+
 daemon:
-	docker stack deploy -c <(docker-compose config) $(SERVICE_NAME) $(ARGS)
+	docker stack deploy -c <(${DOCKER_COMPOSE} config) $(SERVICE_NAME) $(ARGS)
 
 down:
 	docker stack rm $(SERVICE_NAME) $(ARGS)
