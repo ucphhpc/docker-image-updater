@@ -68,6 +68,18 @@ func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummar
 	return images, nil
 }
 
+func Containers(ctx context.Context, client *client.Client) ([]types.Container, error) {
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+	return containers, nil
+}
+
+func isExited(container types.Container) bool {
+	return container.State == "exited"
+}
+
 func currentTime() string {
 	return time.Now().Format(time.RFC3339)
 }
@@ -79,6 +91,7 @@ func run() {
 	var prune bool
 	var pruneUntagged bool
 	var debug bool
+	var removeStoppedContainers bool
 
 	flag.Var(&updateImages, "update",
 		"A list of images that should be monitored for update pulls")
@@ -90,6 +103,8 @@ func run() {
 		"Whether non update images should be pruned/removed from the host")
 	flag.BoolVar(&pruneUntagged, "prune-untagged", false,
 		"Requires prune, Whether untagged/nontagged images should be kept on the host")
+	flag.BoolVar(&removeStoppedContainers, "remove-stopped-containers", false,
+		"Whether the updater should remove stopped containers before the images are pruned")
 	flag.BoolVar(&debug, "debug", false,
 		"Set the debug flag to run the updater in debug mode")
 
@@ -112,71 +127,88 @@ func run() {
 		}
 		// Prune non-monitored images
 		if prune {
-			images, err := hostImages(ctx, cli)
-			if err != nil {
-				log.Errorf("%s - Failed to retrieve host images, (err): %s", currentTime(), err)
-			}
+			if removeStoppedContainers {
+				log.Infof("%s - Checking for stopped containers to remove", currentTime())
+				containers, err := Containers(ctx, cli)
+				if err != nil {
+					log.Errorf("%s - Failed to retrieve containers, (err): %s", currentTime(), err)
+				}
 
-			for _, i := range images {
-				for _, tag := range i.RepoTags {
-					beingUpdated := false
-					protected := false
-					beingUsed := false
-					if _, ok := updateImages[tag]; ok {
-						beingUpdated = true
-						// Check weather it matches without image sha
-					} else if _, ok := updateImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
-						beingUpdated = true
-					}
-
-					if _, ok := protectImages[tag]; ok {
-						protected = true
-						// Check weather it matches without image sha
-					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
-						protected = true
-					}
-
-					if used, err := usedImage(ctx, cli, i, debug); err != nil {
-						log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
-					} else {
-						beingUsed = used
-					}
-
-					if protected && debug {
-						log.Debugf("%s - Volume tag %s wont be pruned since it is protected", currentTime(), tag)
-					}
-
-					if !beingUpdated && !protected && !beingUsed {
-						if debug {
-							log.Debugf("%s - Prunning %v", currentTime(), i.ID)
-						}
-						if err := removeImage(ctx, cli, i, debug); err != nil {
-							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+				for _, container := range containers {
+					if isExited(container) {
+						log.Infof("%s - Removing container: %s", currentTime(), container.ID)
+						if err := cli.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
+							log.Errorf("%s - Failed to remove container: %s, (err): %s", currentTime(), container.ID, err)
 						}
 					}
 				}
-				// Remove untagged
-				if pruneUntagged {
-					if len(i.RepoTags) == 0 {
-						if err := removeImage(ctx, cli, i, debug); err != nil {
-							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+
+				images, err := hostImages(ctx, cli)
+				if err != nil {
+					log.Errorf("%s - Failed to retrieve host images, (err): %s", currentTime(), err)
+				}
+
+				for _, i := range images {
+					for _, tag := range i.RepoTags {
+						beingUpdated := false
+						protected := false
+						beingUsed := false
+						if _, ok := updateImages[tag]; ok {
+							beingUpdated = true
+							// Check weather it matches without image sha
+						} else if _, ok := updateImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+							beingUpdated = true
+						}
+
+						if _, ok := protectImages[tag]; ok {
+							protected = true
+							// Check weather it matches without image sha
+						} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+							protected = true
+						}
+
+						if used, err := usedImage(ctx, cli, i, debug); err != nil {
+							log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
+						} else {
+							beingUsed = used
+						}
+
+						if protected && debug {
+							log.Debugf("%s - Volume tag %s wont be pruned since it is protected", currentTime(), tag)
+						}
+
+						if !beingUpdated && !protected && !beingUsed {
+							if debug {
+								log.Debugf("%s - Prunning %v", currentTime(), i.ID)
+							}
+							if err := removeImage(ctx, cli, i, debug); err != nil {
+								log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+							}
+						}
+					}
+					// Remove untagged
+					if pruneUntagged {
+						if len(i.RepoTags) == 0 {
+							if err := removeImage(ctx, cli, i, debug); err != nil {
+								log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+							}
 						}
 					}
 				}
 			}
-		}
 
-		log.Infof("%s - Checking for image updates", currentTime())
-		for k := range updateImages {
-			if debug {
-				log.Debugf("%s - Checking image: %s for a new version", currentTime(), k)
+			log.Infof("%s - Checking for image updates", currentTime())
+			for k := range updateImages {
+				if debug {
+					log.Debugf("%s - Checking image: %s for a new version", currentTime(), k)
+				}
+				if err := updateImage(ctx, cli, k, debug); err != nil {
+					log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
+				}
 			}
-			if err := updateImage(ctx, cli, k, debug); err != nil {
-				log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
-			}
-		}
 
-		log.Infof("%s - Update state finished", currentTime())
-		time.Sleep(time.Duration(interval) * time.Minute)
+			log.Infof("%s - Update state finished", currentTime())
+			time.Sleep(time.Duration(interval) * time.Minute)
+		}
 	}
 }
