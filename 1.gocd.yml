@@ -29,7 +29,8 @@ pipelines:
         destination: publish-docker-scripts
     parameters:
       IMAGE: docker-image-updater
-      ARGS: ''
+      BUILD_ARGS: ''
+      TEST_ARGS: ''
       DEFAULT_TAG: latest
       COMMIT_TAG: GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
       EXTRA_TAG: ''
