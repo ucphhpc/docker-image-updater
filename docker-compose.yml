@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ucphhpc/docker-image-updater${TAG}
+    image: ucphhpc/docker-image-updater:${TAG}
     deploy:
       mode: global
     environment:
