@@ -1,18 +1,15 @@
-version: '3.7'
 services:
   updater:
     build:
-        context: ./
-        dockerfile: Dockerfile
-        args:
-          TAG: ${TAG}
-    env_file:
-      - .env
-    image: ucphhpc/docker-image-updater
+      context: .
+      dockerfile: Dockerfile
+    image: ucphhpc/docker-image-updater${TAG}
     deploy:
       mode: global
     environment:
       TZ: ${TZ}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
     command: -interval 10
