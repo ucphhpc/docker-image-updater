@@ -92,14 +92,14 @@ install: install-dep
 uninstall:
 ### PLACEHOLDER ###
 
-.PHONY: uninstallcheck
-uninstallcheck:
+.PHONY: uninstalltest
+uninstalltest:
 ### PLACEHOLDER ###
 
-.PHONY: installcheck
-installcheck:
+.PHONY: installtest
+installtest:
 ### PLACEHOLDER ###
 
-.PHONY: check
-check:
+.PHONY: test
+test:
 ### PLACEHOLDER ###
