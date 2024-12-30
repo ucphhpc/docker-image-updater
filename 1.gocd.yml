@@ -32,7 +32,7 @@ pipelines:
       BUILD_ARGS: ''
       TEST_ARGS: ''
       DEFAULT_TAG: :latest
-      COMMIT_TAG: :GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
+      COMMIT_TAG: :${GO_REVISION_DOCKER_IMAGE_UPDATER_GIT}
       EXTRA_TAG: ''
       SRC_DIRECTORY: docker-image-updater
       TEST_DIRECTORY: docker-image-updater
