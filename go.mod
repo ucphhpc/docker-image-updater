@@ -1,11 +1,13 @@
 module github.com/rasmunk/docker-image-updater
 
-go 1.20
+go 1.23.0
+
+toolchain go1.23.7
 
 require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.26.0
+	golang.org/x/net v0.36.0
 )
 
 require (
@@ -31,7 +33,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	gotest.tools/v3 v3.4.0 // indirect

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -30,7 +32,7 @@ func updateImage(ctx context.Context, client *client.Client, image string, debug
 	return nil
 }
 
-func removeImage(ctx context.Context, client *client.Client, image types.ImageSummary, debug bool) error {
+func removeImage(ctx context.Context, client *client.Client, image image.Summary, debug bool) error {
 	delResp, err := client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true, PruneChildren: true})
 	if err != nil {
 		return err
@@ -43,16 +45,16 @@ func removeImage(ctx context.Context, client *client.Client, image types.ImageSu
 	return nil
 }
 
-func usedImage(ctx context.Context, client *client.Client, image types.ImageSummary, debug bool) (bool, error) {
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true})
+func usedImage(ctx context.Context, client *client.Client, image image.Summary, debug bool) (bool, error) {
+	containers, err := client.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return false, err
 	}
 
-	for _, container := range containers {
-		if container.ImageID == image.ID {
+	for _, container_ := range containers {
+		if container_.ImageID == image.ID {
 			if debug {
-				log.Debugf("%s - Image: %s is being used by container: %s", currentTime(), image.ID, container.ID)
+				log.Debugf("%s - Image: %s is being used by container: %s", currentTime(), image.ID, container_.ID)
 			}
 			return true, nil
 		}
@@ -60,7 +62,7 @@ func usedImage(ctx context.Context, client *client.Client, image types.ImageSumm
 	return false, nil
 }
 
-func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummary, error) {
+func hostImages(ctx context.Context, client *client.Client) ([]image.Summary, error) {
 	images, err := client.ImageList(ctx, types.ImageListOptions{All: true})
 	if err != nil {
 		return nil, err
@@ -69,15 +71,15 @@ func hostImages(ctx context.Context, client *client.Client) ([]types.ImageSummar
 }
 
 func Containers(ctx context.Context, client *client.Client) ([]types.Container, error) {
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true})
+	containers, err := client.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
 	return containers, nil
 }
 
-func isExited(container types.Container) bool {
-	return container.State == "exited"
+func isExited(container_ types.Container) bool {
+	return container_.State == "exited"
 }
 
 func currentTime() string {
@@ -134,11 +136,11 @@ func run() {
 					log.Errorf("%s - Failed to retrieve containers, (err): %s", currentTime(), err)
 				}
 
-				for _, container := range containers {
-					if isExited(container) {
-						log.Infof("%s - Removing container: %s", currentTime(), container.ID)
-						if err := cli.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-							log.Errorf("%s - Failed to remove container: %s, (err): %s", currentTime(), container.ID, err)
+				for _, container_ := range containers {
+					if isExited(container_) {
+						log.Infof("%s - Removing container: %s", currentTime(), container_.ID)
+						if err := cli.ContainerRemove(ctx, container_.ID, container.RemoveOptions{Force: true}); err != nil {
+							log.Errorf("%s - Failed to remove container: %s, (err): %s", currentTime(), container_.ID, err)
 						}
 					}
 				}
