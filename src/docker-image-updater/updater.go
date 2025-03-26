@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
+	containertypes "github.com/docker/docker/api/types/container"
+	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
 func updateImage(ctx context.Context, client *client.Client, image string, debug bool) error {
-	readIo, err := client.ImagePull(ctx, image, types.ImagePullOptions{})
+	readIo, err := client.ImagePull(ctx, image, imagetypes.PullOptions{})
 	if err != nil {
 		return err
 	}
@@ -32,8 +32,8 @@ func updateImage(ctx context.Context, client *client.Client, image string, debug
 	return nil
 }
 
-func removeImage(ctx context.Context, client *client.Client, image image.Summary, debug bool) error {
-	delResp, err := client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true, PruneChildren: true})
+func removeImage(ctx context.Context, client *client.Client, image imagetypes.Summary, debug bool) error {
+	delResp, err := client.ImageRemove(ctx, image.ID, imagetypes.RemoveOptions{Force: true, PruneChildren: true})
 	if err != nil {
 		return err
 	}
@@ -45,16 +45,16 @@ func removeImage(ctx context.Context, client *client.Client, image image.Summary
 	return nil
 }
 
-func usedImage(ctx context.Context, client *client.Client, image image.Summary, debug bool) (bool, error) {
-	containers, err := client.ContainerList(ctx, container.ListOptions{All: true})
+func usedImage(ctx context.Context, client *client.Client, image imagetypes.Summary, debug bool) (bool, error) {
+	containers, err := client.ContainerList(ctx, containertypes.ListOptions{All: true})
 	if err != nil {
 		return false, err
 	}
 
-	for _, container_ := range containers {
-		if container_.ImageID == image.ID {
+	for _, container := range containers {
+		if container.ImageID == image.ID {
 			if debug {
-				log.Debugf("%s - Image: %s is being used by container: %s", currentTime(), image.ID, container_.ID)
+				log.Debugf("%s - Image: %s is being used by container: %s", currentTime(), image.ID, container.ID)
 			}
 			return true, nil
 		}
@@ -62,8 +62,8 @@ func usedImage(ctx context.Context, client *client.Client, image image.Summary, 
 	return false, nil
 }
 
-func hostImages(ctx context.Context, client *client.Client) ([]image.Summary, error) {
-	images, err := client.ImageList(ctx, types.ImageListOptions{All: true})
+func hostImages(ctx context.Context, client *client.Client) ([]imagetypes.Summary, error) {
+	images, err := client.ImageList(ctx, imagetypes.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
@@ -71,15 +71,15 @@ func hostImages(ctx context.Context, client *client.Client) ([]image.Summary, er
 }
 
 func Containers(ctx context.Context, client *client.Client) ([]types.Container, error) {
-	containers, err := client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := client.ContainerList(ctx, containertypes.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
 	return containers, nil
 }
 
-func isExited(container_ types.Container) bool {
-	return container_.State == "exited"
+func isExited(container types.Container) bool {
+	return container.State == "exited"
 }
 
 func currentTime() string {
@@ -120,6 +120,7 @@ func run() {
 
 	log.Infof("%s - Running update check", currentTime())
 	if debug {
+		log.SetLevel(log.DebugLevel)
 		log.Debugf("%s - Checking update for: %v", currentTime(), updateImages)
 		log.Debugf("%s - Pruning images not in: %v or %s", currentTime(), updateImages, protectImages)
 	}
@@ -136,81 +137,82 @@ func run() {
 					log.Errorf("%s - Failed to retrieve containers, (err): %s", currentTime(), err)
 				}
 
-				for _, container_ := range containers {
-					if isExited(container_) {
-						log.Infof("%s - Removing container: %s", currentTime(), container_.ID)
-						if err := cli.ContainerRemove(ctx, container_.ID, container.RemoveOptions{Force: true}); err != nil {
-							log.Errorf("%s - Failed to remove container: %s, (err): %s", currentTime(), container_.ID, err)
-						}
-					}
-				}
-
-				images, err := hostImages(ctx, cli)
-				if err != nil {
-					log.Errorf("%s - Failed to retrieve host images, (err): %s", currentTime(), err)
-				}
-
-				for _, i := range images {
-					for _, tag := range i.RepoTags {
-						beingUpdated := false
-						protected := false
-						beingUsed := false
-						if _, ok := updateImages[tag]; ok {
-							beingUpdated = true
-							// Check weather it matches without image sha
-						} else if _, ok := updateImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
-							beingUpdated = true
-						}
-
-						if _, ok := protectImages[tag]; ok {
-							protected = true
-							// Check weather it matches without image sha
-						} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
-							protected = true
-						}
-
-						if used, err := usedImage(ctx, cli, i, debug); err != nil {
-							log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
-						} else {
-							beingUsed = used
-						}
-
-						if protected && debug {
-							log.Debugf("%s - Volume tag %s wont be pruned since it is protected", currentTime(), tag)
-						}
-
-						if !beingUpdated && !protected && !beingUsed {
-							if debug {
-								log.Debugf("%s - Prunning %v", currentTime(), i.ID)
-							}
-							if err := removeImage(ctx, cli, i, debug); err != nil {
-								log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
-							}
-						}
-					}
-					// Remove untagged
-					if pruneUntagged {
-						if len(i.RepoTags) == 0 {
-							if err := removeImage(ctx, cli, i, debug); err != nil {
-								log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
-							}
+				for _, container := range containers {
+					if isExited(container) {
+						log.Infof("%s - Removing container: %s", currentTime(), container.ID)
+						if err := cli.ContainerRemove(ctx, container.ID, containertypes.RemoveOptions{Force: true}); err != nil {
+							log.Errorf("%s - Failed to remove container: %s, (err): %s", currentTime(), container.ID, err)
 						}
 					}
 				}
 			}
 
-			log.Infof("%s - Checking for image updates", currentTime())
-			for k := range updateImages {
-				if debug {
-					log.Debugf("%s - Checking image: %s for a new version", currentTime(), k)
-				}
-				if err := updateImage(ctx, cli, k, debug); err != nil {
-					log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
-				}
+			images, err := hostImages(ctx, cli)
+			if err != nil {
+				log.Errorf("%s - Failed to retrieve host images, (err): %s", currentTime(), err)
 			}
 
-			log.Infof("%s - Update state finished", currentTime())
-			time.Sleep(time.Duration(interval) * time.Minute)
+			for _, i := range images {
+				for _, tag := range i.RepoTags {
+					beingUpdated := false
+					protected := false
+					beingUsed := false
+					if _, ok := updateImages[tag]; ok {
+						beingUpdated = true
+						// Check weather it matches without image sha
+					} else if _, ok := updateImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+						beingUpdated = true
+					}
+
+					if _, ok := protectImages[tag]; ok {
+						protected = true
+						// Check weather it matches without image sha
+					} else if _, ok := protectImages[tag[0:strings.IndexByte(tag, ':')]]; ok {
+						protected = true
+					}
+
+					if used, err := usedImage(ctx, cli, i, debug); err != nil {
+						log.Errorf("%s - %v Failed to check if an image is used, (err): %s", currentTime(), i.ID, err)
+					} else {
+						beingUsed = used
+					}
+
+					if protected && debug {
+						log.Debugf("%s - Volume tag %s wont be pruned since it is protected", currentTime(), tag)
+					}
+
+					if !beingUpdated && !protected && !beingUsed {
+						if debug {
+							log.Debugf("%s - Prunning %v", currentTime(), i.ID)
+						}
+						if err := removeImage(ctx, cli, i, debug); err != nil {
+							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+						}
+					}
+				}
+
+				// Remove untagged
+				if pruneUntagged {
+					if len(i.RepoTags) == 0 {
+						if err := removeImage(ctx, cli, i, debug); err != nil {
+							log.Errorf("%s - Failed to remove %s, (err): %s", currentTime(), i.ID, err)
+						}
+					}
+				}
+			}
 		}
+
+		log.Infof("%s - Checking for image updates", currentTime())
+		for k := range updateImages {
+			if debug {
+				log.Debugf("%s - Checking image: %s for a new version", currentTime(), k)
+			}
+			if err := updateImage(ctx, cli, k, debug); err != nil {
+				log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
+			}
+		}
+
+		log.Infof("%s - Update state finished", currentTime())
+		time.Sleep(time.Duration(interval) * time.Minute)
 	}
 }
