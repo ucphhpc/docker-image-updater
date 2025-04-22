@@ -5,7 +5,7 @@ go 1.23.7
 require (
 	github.com/docker/docker v27.4.1+incompatible
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.36.0
+	golang.org/x/net v0.38.0
 )
 
 require (
@@ -30,7 +30,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
