@@ -3,7 +3,7 @@ module github.com/rasmunk/docker-image-updater
 go 1.23.7
 
 require (
-	github.com/docker/docker v27.4.1+incompatible
+	github.com/docker/docker v28.0.0+incompatible
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.38.0
 )
