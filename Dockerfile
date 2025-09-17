@@ -1,4 +1,4 @@
-FROM golang:1.23.7-alpine
+FROM golang:1.23.8-alpine
 
 RUN apk add tzdata git
 
