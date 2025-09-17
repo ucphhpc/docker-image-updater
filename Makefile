@@ -20,16 +20,23 @@ $(echo ${DOCKER_COMPOSE} >/dev/null)
 -include .env
 ARGS=
 
-
 .PHONY: all
 all: .env dockerbuild
 
+.PHONY: init
+init: .env
+
+.PHONY: env
 .env:
+ifeq ($(shell test -e defaults.env && echo yes), yes)
+ifneq ($(shell test -e .env && echo yes), yes)
 	@echo
 	@echo "*** No environment selected - using default ***"
 	@echo
-	ln -s defaults.env .env
-	@sleep 2
+		ln -s defaults.env .env
+endif
+endif
+
 
 .PHONY: build
 build: dockerbuild
