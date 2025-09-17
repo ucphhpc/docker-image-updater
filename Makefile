@@ -48,7 +48,7 @@ dockerpush:
 
 .PHONY: deamon
 daemon:
-	docker stack deploy -c <(${DOCKER_COMPOSE} config) ${SERVICE_NAME} $(ARGS)
+	docker stack deploy -c docker-compose.yml ${SERVICE_NAME} $(ARGS)
 
 daemon-down:
 	docker stack rm $(SERVICE_NAME)
