@@ -1,5 +1,6 @@
 services:
   updater:
+    build: ./
     image: ucphhpc/docker-image-updater:${TAG}
     deploy:
       mode: global

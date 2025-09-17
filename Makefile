@@ -8,12 +8,12 @@ IMAGE=${PACKAGE_NAME}
 # https://docs.docker.com/develop/develop-images/build_enhancements/
 DOCKER_BUILDKIT=1
 # NOTE: dynamic lookup with docker as default and fallback to podman
-DOCKER = $(shell which docker 2>/dev/null || which podman 2>/dev/null)
+DOCKER=$(shell which docker 2>/dev/null || which podman 2>/dev/null)
 # if docker compose plugin is not available, try old docker-compose/podman-compose
 ifeq (, $(shell ${DOCKER} help|grep compose))
-	DOCKER_COMPOSE = $(shell which docker-compose 2>/dev/null || which podman-compose 2>/dev/null)
+	DOCKER_COMPOSE=$(shell which docker-compose 2>/dev/null || which podman-compose 2>/dev/null)
 else
-	DOCKER_COMPOSE = ${DOCKER} compose
+	DOCKER_COMPOSE=${DOCKER} compose
 endif
 $(echo ${DOCKER_COMPOSE} >/dev/null)
 
@@ -36,7 +36,6 @@ ifneq ($(shell test -e .env && echo yes), yes)
 		ln -s defaults.env .env
 endif
 endif
-
 
 .PHONY: build
 build: dockerbuild
