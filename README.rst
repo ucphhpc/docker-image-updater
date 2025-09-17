@@ -2,6 +2,12 @@
 docker-image-updater
 ====================
 
+.. image:: https://img.shields.io/docker/v/ucphhpc/docker-image-updater
+    :target: https://hub.docker.com/r/ucphhpc/docker-image-updater
+
+.. image:: https://img.shields.io/docker/image-size/ucphhpc/docker-image-updater
+    :target: https://hub.docker.com/r/ucphhpc/docker-image-updater
+
 Docker image updater that continuously checks for updates for a given docker image,
 has two options for execution:
 
