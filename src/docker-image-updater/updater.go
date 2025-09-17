@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	imagetypes "github.com/docker/docker/api/types/image"
+	buildtypes "github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -78,6 +79,22 @@ func Containers(ctx context.Context, client *client.Client) ([]types.Container, 
 	return containers, nil
 }
 
+func clearBuildCache(ctx context.Context, client *client.Client, debug bool) error {
+	pruneResp, err := client.BuildCachePrune(ctx, buildtypes.CachePruneOptions{All: true})
+	if err != nil {
+		return err
+	}
+
+	if debug {
+		for _, d := range pruneResp.CachesDeleted {
+			log.Debugf("%s - Build cache deleted: %s", currentTime(), d)
+		}
+		log.Debugf("%s - Space reclaimed: %d", currentTime(), pruneResp.SpaceReclaimed)
+	}
+	return nil
+}
+
+
 func isExited(container types.Container) bool {
 	return container.State == "exited"
 }
@@ -94,6 +111,7 @@ func run() {
 	var pruneUntagged bool
 	var debug bool
 	var removeStoppedContainers bool
+	var removeBuildCache bool
 
 	flag.Var(&updateImages, "update",
 		"A list of images that should be monitored for update pulls")
@@ -109,6 +127,8 @@ func run() {
 		"Whether the updater should remove stopped containers before the images are pruned")
 	flag.BoolVar(&debug, "debug", false,
 		"Set the debug flag to run the updater in debug mode")
+	flag.BoolVar(&removeBuildCache, "remove-build-cache", false,
+		"Whether the updater should remove build cache images")
 
 	flag.Parse()
 
@@ -209,6 +229,16 @@ func run() {
 			}
 			if err := updateImage(ctx, cli, k, debug); err != nil {
 				log.Errorf("%s - Failed to check image %s for updates, (err): %s", currentTime(), k, err)
+			}
+		}
+
+		// Remove build cache
+		if removeBuildCache {
+			if debug {
+				log.Debugf("%s - Removing build cache", currentTime())
+			}
+			if err := clearBuildCache(ctx, cli, debug); err != nil {
+				log.Errorf("%s - Failed to remove build cache, (err): %s", currentTime(), err)
 			}
 		}
 

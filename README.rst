@@ -27,6 +27,10 @@ Through go setup check the debian image for updates every 10 minutes (the defaul
     # If in addition to images being updated other images should just be kept without being updated
     ./docker-image-updater -update debian -protect ubuntu -prune
 
+    # Docker can have a tendency to keep build cache around which can keep you from reclaiming disk space
+    # There the service also allows for you to clear this cache with the -remove-build-cache flag
+    ./docker-image-updater -update debian -prune -remove-build-cache
+
 Build as a docker image (defaults to use the :edge tag)::
 
     make build
