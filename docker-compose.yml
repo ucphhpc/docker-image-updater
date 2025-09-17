@@ -3,8 +3,6 @@ services:
     image: ucphhpc/docker-image-updater:${TAG}
     deploy:
       mode: global
-    environment:
-      TZ: ${TZ}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
