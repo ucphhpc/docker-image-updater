@@ -29,12 +29,13 @@ pipelines:
         destination: publish-docker-scripts
     parameters:
       IMAGE: docker-image-updater
-      BUILD_ARGS: ''
+      SRC_DIRECTORY: docker-image-updater
+      BUILD_ARGS: build
+      TEST_DIRECTORY: docker-image-updater
       TEST_ARGS: ''
+      TEST_MAKE_TARGET: test
+      PUSH_DIRECTORY: publish-docker-scripts
       DEFAULT_TAG: latest
       COMMIT_TAG: GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
       EXTRA_TAG: 0.0.1
-      SRC_DIRECTORY: docker-image-updater
-      TEST_DIRECTORY: docker-image-updater
-      PUSH_DIRECTORY: publish-docker-scripts
     template: docker_image
