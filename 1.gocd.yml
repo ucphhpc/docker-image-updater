@@ -30,10 +30,11 @@ pipelines:
     parameters:
       IMAGE: docker-image-updater
       SRC_DIRECTORY: docker-image-updater
-      BUILD_ARGS: build
+      BUILD_MAKE_TARGET: build
+      BUILD_MAKE_ARGS: '--no-cache'
       TEST_DIRECTORY: docker-image-updater
-      TEST_ARGS: ''
       TEST_MAKE_TARGET: test
+      TEST_MAKE_ARGS: ''
       PUSH_DIRECTORY: publish-docker-scripts
       DEFAULT_TAG: latest
       COMMIT_TAG: GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
