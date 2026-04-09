@@ -3,6 +3,8 @@ PACKAGE_NAME=docker-image-updater
 OWNER?=ucphhpc
 SERVICE_NAME=${PACKAGE_NAME}
 IMAGE=${PACKAGE_NAME}
+BUILD_ARGS=
+DAEMON_ARGS=
 
 # Enable that the builder should use buildkit
 # https://docs.docker.com/develop/develop-images/build_enhancements/
@@ -42,7 +44,7 @@ build: dockerbuild
 
 .PHONY: dockerbuild
 dockerbuild:
-	${DOCKER_COMPOSE} build ${ARGS}
+	${DOCKER_COMPOSE} build ${BUILD_ARGS}
 
 .PHONY: dockerclean
 dockerclean:
@@ -54,18 +56,18 @@ dockerpush:
 
 .PHONY: deamon
 daemon:
-	docker stack deploy -c docker-compose.yml ${SERVICE_NAME} $(ARGS)
+	docker stack deploy -c docker-compose.yml ${SERVICE_NAME} $(DAEMON_ARGS)
 
 daemon-down:
 	docker stack rm $(SERVICE_NAME)
 
 .PHONY: up
 up:
-	${DOCKER_COMPOSE} up -d $(ARGS)
+	${DOCKER_COMPOSE} up -d $(DAEMON_ARGS)
 
 .PHONY: down
 down:
-	${DOCKER_COMPOSE} down $(ARGS)
+	${DOCKER_COMPOSE} down $(DAEMON_ARGS)
 
 .PHONY: clean
 clean: dockerclean distclean
