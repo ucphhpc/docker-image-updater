@@ -1,6 +1,6 @@
 module github.com/rasmunk/docker-image-updater
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/docker/docker v28.4.0+incompatible
