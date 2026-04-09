@@ -38,5 +38,5 @@ pipelines:
       PUSH_DIRECTORY: publish-docker-scripts
       DEFAULT_TAG: latest
       COMMIT_TAG: GO_REVISION_DOCKER_IMAGE_UPDATER_GIT
-      EXTRA_TAG: 0.0.1
+      EXTRA_TAG: 0.0.2
     template: docker_image
