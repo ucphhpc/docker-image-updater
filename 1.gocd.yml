@@ -31,7 +31,7 @@ pipelines:
       IMAGE: docker-image-updater
       SRC_DIRECTORY: docker-image-updater
       BUILD_MAKE_TARGET: build
-      BUILD_MAKE_ARGS: 'BUILD_ARGS=--no-cache'
+      BUILD_MAKE_ARGS: '--no-cache'
       TEST_DIRECTORY: docker-image-updater
       TEST_MAKE_TARGET: test
       TEST_MAKE_ARGS: ''
